@@ -1,0 +1,88 @@
+import React, { useState } from 'react';
+import './App.css';
+
+function App() {
+  // State to hold the list of messages
+  const [messages, setMessages] = useState([]);
+  // State for the user's input
+  const [input, setInput] = useState('');
+  // State to show a loading indicator
+  const [isLoading, setIsLoading] = useState(false);
+  // State to hold any error messages
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage = { role: 'user', content: input };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput('');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // Send the message to your backend API
+      const response = await fetch('http://localhost:5000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) {
+        // This will catch HTTP errors like 500
+        throw new Error('The server responded with an error. Please try again later.');
+      }
+
+      const data = await response.json();
+      
+      // Add the AI's reply to the messages
+      const aiMessage = { role: 'assistant', content: data.reply };
+      setMessages([...newMessages, aiMessage]);
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to get a response. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="chat-container">
+      <div className="header">
+        <h1>AI Chatbot</h1>
+      </div>
+      <div className="message-area">
+        {messages.map((msg, index) => (
+          <div key={index} className={`message ${msg.role}`}>
+            <p>{msg.content}</p>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="message assistant">
+            <div className="typing-indicator">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        )}
+        {error && <div className="error-message">{error}</div>}
+      </div>
+      <form className="input-area" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type your message here..."
+          aria-label="Chat input"
+        />
+        <button type="submit" disabled={isLoading}>Send</button>
+      </form>
+    </div>
+  );
+}
+
+export default App;
